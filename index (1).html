@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#008069">
+<title>Kuba City</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<style>
+html,body{height:100%;margin:0;background:#f0f2f5;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+#root{height:100%}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,signInAnonymously,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,getDocs,updateDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const fbApp=initializeApp({
+  apiKey:"AIzaSyCka4e3dN75Vz7QGOZzZ7RT7LMPDfSWWYA",
+  authDomain:"kuba-city-8ab23.firebaseapp.com",
+  projectId:"kuba-city-8ab23",
+  storageBucket:"kuba-city-8ab23.firebasestorage.app",
+  messagingSenderId:"359728308053",
+  appId:"1:359728308053:web:3138a0a8c9dbe32247d9dc"
+});
+const auth=getAuth(fbApp),db=getFirestore(fbApp);
+
+const {useState,useEffect,useRef}=React;
+const html=htm.bind(React.createElement);
+const COUNTRIES=[["Togo","+228"],["Bénin","+229"],["Ghana","+233"],["Côte d’Ivoire","+225"],["Burkina Faso","+226"],["Nigeria","+234"],["France","+33"]];
+const P={chat:"M7.9 20A9 9 0 1 0 4 16.1L2 22Z",users:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75",phone:"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z",plus:"M5 12h14 M12 5v14",send:"m22 2-7 20-4-9-9-4Z M22 2 11 13",back:"m12 19-7-7 7-7 M19 12H5",camera:"M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8",x:"M18 6 6 18 M6 6l12 12",circle:"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20",userplus:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M19 8v6 M22 11h-6",mic:"M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3",more:"M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M12 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M12 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z",play:"M6 3l14 9-14 9z",pause:"M6 4h4v16H6z M14 4h4v16h-4z",trash:"M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"};
+const Ic=({n,s=24})=>html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill=${n==="play"||n==="pause"||n==="more"?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">${P[n].split(" M").map((d,i)=>html`<path key=${i} d=${(i?"M":"")+d}/>`)}</svg>`;
+const readImg=(file,max)=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);r(c.toDataURL("image/jpeg",.7))};im.src=fr.result};fr.readAsDataURL(file)});
+const fmt=t=>new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+const fmtD=t=>{const d=new Date(t);return d.toDateString()===new Date().toDateString()?fmt(t):d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})};
+const normPhone=(cc,p)=>cc+p.replace(/\D/g,"").replace(/^0+/,"");
+const findByPhone=async ph=>{const s=await getDocs(query(collection(db,"users"),where("phone","==",ph)));return s.docs[0]?{id:s.docs[0].id,...s.docs[0].data()}:null};
+const inp="w-full border-b-2 border-[#00a884] py-2 outline-none text-base bg-transparent";
+const btn="w-full bg-[#00a884] text-white rounded-full py-3 font-semibold active:bg-[#008069] disabled:opacity-40";
+
+const Logo=({s=96})=>html`<svg width=${s} height=${s} viewBox="0 0 96 96"><rect width="96" height="96" rx="22" fill="#0f7a56"/><path d="M48 14c19 0 33 12 33 28S67 70 48 70c-4 0-8-.5-11-1.5L22 78l5-13C20 60 15 52 15 42c0-16 14-28 33-28z" fill="#f5b100"/><text x="48" y="48" textAnchor="middle" fontFamily="Arial" fontWeight="900" fontSize="26" fill="#0b5a40">CC</text><path d="M32 62l7-6 5 4 5-6 5 6 5-4 7 6z" fill="#0b5a40"/></svg>`;
+const Av=({src,name="?",s=48})=>src?html`<img src=${src} className="rounded-full object-cover shrink-0" style=${{width:s,height:s}}/>`:html`<div className="rounded-full bg-gray-300 text-gray-600 font-bold flex items-center justify-center shrink-0" style=${{width:s,height:s}}>${(name.trim()[0]||"?").toUpperCase()}</div>`;
+const Pick=({onPick,max,className,children})=>html`<label className=${className}><input type="file" accept="image/*" hidden onChange=${async e=>{const f=e.target.files[0];if(f)onPick(await readImg(f,max));e.target.value=""}}/>${children}</label>`;
+const PhotoPick=({v,name,onPick,label})=>html`<${Pick} max=${200} onPick=${onPick} className="flex flex-col items-center gap-1 text-[#008069] text-sm cursor-pointer"><div className="relative"><${Av} src=${v} name=${name||"?"} s=${88}/><span className="absolute bottom-0 right-0 bg-[#00a884] text-white rounded-full p-1.5"><${Ic} n="camera" s=${16}/></span></div>${label}<//>`;
+const CCsel=({f,set})=>html`<div className="flex gap-3 items-end"><select value=${f.cc} onChange=${e=>set({...f,cc:e.target.value})} className=${inp+" !w-32"}>${COUNTRIES.map(([n,c])=>html`<option key=${n} value=${c}>${n} ${c}</option>`)}</select><input type="tel" inputMode="tel" placeholder="Numéro de téléphone" value=${f.phone} onChange=${e=>set({...f,phone:e.target.value.replace(/[^\d ]/g,"")})} className=${inp}/></div>`;
+const Sheet=({title,onClose,children})=>html`<div className="fixed inset-0 z-40 bg-black/40 flex items-end justify-center" onClick=${onClose}><div className="bg-white w-full max-w-md rounded-t-2xl p-4 space-y-4 max-h-[90%] overflow-y-auto" onClick=${e=>e.stopPropagation()}><div className="flex justify-between items-center"><h2 className="font-bold text-lg">${title}</h2><button onClick=${onClose} className="p-1 text-gray-500"><${Ic} n="x"/></button></div>${children}</div></div>`;
+const Err=({t})=>t?html`<p className="text-sm text-red-600">${t}</p>`:null;
+const Empty=({t})=>html`<p className="text-center text-gray-400 text-sm px-8 py-10">${t}</p>`;
+const Row=({name,photo,sub,time,onClick})=>html`<button onClick=${onClick} className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100"><${Av} src=${photo} name=${name}/><div className="flex-1 min-w-0 border-b border-gray-100 pb-2"><div className="flex justify-between"><span className="font-semibold truncate">${name}</span><span className="text-xs text-gray-400">${time||""}</span></div><div className="text-sm text-gray-500 truncate">${sub}</div></div></button>`;
+
+function Welcome({uid,onDone}){
+  const [step,setStep]=useState(0),[f,setF]=useState({name:"",cc:"+228",phone:"",photo:null}),[err,setErr]=useState(""),[busy,setBusy]=useState(false);
+  const ok=f.name.trim()&&f.phone.replace(/\D/g,"").length>=6;
+  const go=async()=>{setBusy(true);setErr("");try{const ph=normPhone(f.cc,f.phone);const ex=await findByPhone(ph);if(ex&&ex.id!==uid){setErr("Ce numéro est déjà inscrit.");setBusy(false);return}await setDoc(doc(db,"users",uid),{name:f.name.trim(),phone:ph,photo:f.photo,ts:Date.now()});onDone()}catch(e){setErr("Erreur : "+(e.code||e.message));setBusy(false)}};
+  if(!step)return html`<div className="h-full max-w-md mx-auto bg-white flex flex-col items-center justify-between p-8 text-center"><div></div><div className="space-y-4"><${Logo} s=${120}/><h1 className="text-3xl font-bold text-[#008069]">Kuba City</h1><p className="text-gray-500">La messagerie et la communauté des amis du quartier Kouba.</p></div><div className="w-full space-y-3"><p className="text-xs text-gray-400">En continuant, vous créez votre profil visible par les autres membres.</p><button className=${btn} onClick=${()=>setStep(1)}>Accepter et continuer</button></div></div>`;
+  return html`<div className="h-full max-w-md mx-auto bg-white overflow-y-auto p-6 space-y-6"><h1 className="text-xl font-bold text-[#008069] text-center">Créer votre profil</h1><div className="flex justify-center"><${PhotoPick} v=${f.photo} name=${f.name} onPick=${p=>setF({...f,photo:p})} label="Photo ou logo"/></div><input placeholder="Votre nom ou pseudo" value=${f.name} onChange=${e=>setF({...f,name:e.target.value})} className=${inp}/><${CCsel} f=${f} set=${setF}/><${Err} t=${err}/><button disabled=${!ok||busy} className=${btn} onClick=${go}>${busy?"Un instant…":"Terminer"}</button></div>`;
+}
+
+const fmtDur=s=>Math.floor((s||0)/60)+":"+String((s||0)%60).padStart(2,"0");
+const dayLabel=t=>{const d=new Date(t),n=new Date();return d.toDateString()===n.toDateString()?"Aujourd’hui":new Date(n-864e5).toDateString()===d.toDateString()?"Hier":d.toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})};
+const Voice=({src,dur,me,id})=>{const a=useRef(),[pl,setPl]=useState(false),[p,setP]=useState(0),sid=String(id);
+  useEffect(()=>{const el=new Audio(src);a.current=el;el.ontimeupdate=()=>setP(el.duration&&isFinite(el.duration)?el.currentTime/el.duration:0);el.onended=()=>{setPl(false);setP(0)};return()=>el.pause()},[src]);
+  const bars=Array.from({length:28},(_,i)=>6+((i*7+sid.charCodeAt(i%sid.length)*3)%17));
+  return html`<div className="flex items-center gap-2 w-56 py-1"><button onClick=${()=>{const el=a.current;if(pl){el.pause();setPl(false)}else{el.play();setPl(true)}}} className=${"rounded-full p-2 text-white "+(me?"bg-[#00a884]":"bg-gray-400")}><${Ic} n=${pl?"pause":"play"} s=${18}/></button><div className="flex-1 flex items-center gap-[2px] h-7">${bars.map((h,i)=>html`<span key=${i} className="w-[3px] rounded-full" style=${{height:h,background:i/28<p?"#00a884":"#b8c4c0"}}></span>`)}</div><span className="text-[11px] text-gray-500">${fmtDur(dur)}</span></div>`};
+function Chat({ent,path,uid,users,canPost=true,blocked=[],onMenu,lockMsg,onSend,onBack,call,onErr}){
+  const [msgs,setMsgs]=useState([]),[t,setT]=useState(""),[recOn,setRecOn]=useState(false),[sec,setSec]=useState(0),end=useRef(),R=useRef(null);
+  const [act,setAct]=useState(null),[edit,setEdit]=useState(null),ms=msgs.filter(m=>!blocked.includes(m.from));
+  useEffect(()=>onSnapshot(query(collection(db,...path),orderBy("ts"),limit(200)),s=>setMsgs(s.docs.map(d=>({id:d.id,...d.data()}))),onErr),[path.join("/")]);
+  useEffect(()=>{end.current&&end.current.scrollIntoView()},[msgs.length]);
+  useEffect(()=>()=>{if(R.current){clearInterval(R.current.iv);R.current.st.getTracks().forEach(x=>x.stop())}},[]);
+  const go=async()=>{if(!t.trim())return;if(edit){try{await updateDoc(doc(db,...path,edit.id),{text:t.trim(),edited:true})}catch(e){onErr(e)}setEdit(null);setT("");return}onSend({text:t.trim()});setT("")};
+  const start=async()=>{try{const st=await navigator.mediaDevices.getUserMedia({audio:true});const mt=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"";const mr=new MediaRecorder(st,mt?{mimeType:mt,audioBitsPerSecond:24000}:{audioBitsPerSecond:24000});const ch=[];mr.ondataavailable=e=>e.data.size&&ch.push(e.data);const r={mr,ch,st,t:0};r.iv=setInterval(()=>{r.t++;setSec(r.t);if(r.t>=60)stop(true)},1000);R.current=r;mr.start();setSec(0);setRecOn(true)}catch(e){alert("Micro non autorisé. Autorisez le micro pour enregistrer une note vocale.")}};
+  const stop=ok=>{const r=R.current;if(!r)return;R.current=null;clearInterval(r.iv);r.mr.onstop=()=>{r.st.getTracks().forEach(x=>x.stop());if(ok&&r.ch.length){const f=new FileReader();f.onload=()=>onSend({audio:f.result,dur:r.t});f.readAsDataURL(new Blob(r.ch,{type:r.mr.mimeType||"audio/webm"}))}};r.mr.stop();setRecOn(false)};
+  const grp=ent.type!=="dm";
+  return html`<div className="fixed inset-0 z-30 max-w-md mx-auto flex flex-col" style=${{background:"#efeae2 radial-gradient(#d9d2c5 1px,transparent 1px) 0 0/22px 22px"}}>
+    <div className="bg-[#008069] text-white flex items-center gap-2 px-2 pb-2" style=${{paddingTop:"calc(env(safe-area-inset-top,0px) + .5rem)"}}>
+      <button onClick=${onBack} className="p-1"><${Ic} n="back"/></button><${Av} src=${ent.photo} name=${ent.name} s=${40}/>
+      <div className="flex-1 min-w-0"><div className="font-semibold truncate">${ent.name}</div><div className="text-xs opacity-80 truncate">${ent.phone||ent.sub||""}</div></div>
+      ${ent.phone&&html`<button onClick=${()=>call(ent.phone,ent.name)} className="p-2"><${Ic} n="phone"/></button>`}
+      ${onMenu&&html`<button onClick=${onMenu} className="p-2"><${Ic} n="more"/></button>`}
+    </div>
+    ${act&&html`<${Sheet} title="Message" onClose=${()=>setAct(null)}>${act.text&&html`<button onClick=${()=>{setEdit(act);setT(act.text);setAct(null)}} className="w-full text-left py-2 font-medium">Modifier</button>`}<button onClick=${async()=>{try{await deleteDoc(doc(db,...path,act.id))}catch(e){onErr(e)}setAct(null)}} className="w-full text-left py-2 font-medium text-red-600">Supprimer pour tous</button><//>`}
+    <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+      ${!ms.length&&html`<div className="text-center text-xs text-gray-600 bg-white/70 rounded-lg p-2 mx-6 mt-4">Aucun message pour le moment.</div>`}
+      ${ms.map((m,i)=>{const me=m.from===uid,nd=i===0||new Date(m.ts).toDateString()!==new Date(ms[i-1].ts).toDateString();return html`<${React.Fragment} key=${m.id}>${nd&&html`<div className="text-center my-2"><span className="bg-white/90 text-gray-600 text-xs rounded-lg px-3 py-1 shadow-sm">${dayLabel(m.ts)}</span></div>`}<div className=${"flex "+(me?"justify-end":"justify-start")}><div className=${"max-w-[80%] px-2 py-1.5 shadow-sm rounded-lg "+(me?"rounded-tr-none":"rounded-tl-none")} style=${{background:me?"#d9fdd3":"#fff"}} onClick=${()=>me&&setAct(m)}>
+        ${!me&&(grp||!canPost)&&html`<div className="text-xs font-semibold text-[#008069]">${(users[m.from]||{}).name||"Membre"}</div>`}
+        ${m.img&&html`<img src=${m.img} className="rounded-md mb-1 max-h-64 w-full object-cover"/>`}
+        ${m.audio&&html`<${Voice} src=${m.audio} dur=${m.dur} me=${me} id=${m.id}/>`}
+        ${m.text&&html`<div className="whitespace-pre-wrap break-words text-[15px]">${m.text}</div>`}
+        <div className="text-[11px] text-gray-500 text-right">${m.edited?"modifié · ":""}${fmt(m.ts)}${me?" ✓":""}</div></div></div><//>`})}
+      <div ref=${end}></div>
+    </div>
+    ${canPost?html`<div className="flex items-center gap-1 p-2" style=${{paddingBottom:"calc(env(safe-area-inset-bottom,0px) + .5rem)"}}>
+      ${recOn?html`<div className="flex-1 flex items-center bg-white rounded-full px-3 py-2 gap-3"><span className="w-3 h-3 rounded-full bg-red-600 animate-pulse"></span><span className="flex-1 text-sm">Enregistrement… ${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}</span><button onClick=${()=>stop(false)} className="text-gray-500"><${Ic} n="trash" s=${20}/></button></div><button onClick=${()=>stop(true)} className="bg-[#00a884] text-white rounded-full p-3"><${Ic} n="send" s=${20}/></button>`:html`
+      <div className="flex-1 flex items-center bg-white rounded-full px-3 gap-1"><input value=${t} onChange=${e=>setT(e.target.value)} onKeyDown=${e=>e.key==="Enter"&&go()} placeholder=${edit?"Modifier le message…":"Message"} className="flex-1 py-2.5 outline-none bg-transparent min-w-0"/>${edit&&html`<button onClick=${()=>{setEdit(null);setT("")}} className="text-red-500 p-1"><${Ic} n="x" s=${18}/></button>`}<${Pick} max=${800} onPick=${img=>onSend({img})} className="text-gray-500 p-1 cursor-pointer"><${Ic} n="camera"/><//></div>
+      <button onClick=${t.trim()?go:start} className="bg-[#00a884] text-white rounded-full p-3"><${Ic} n=${t.trim()?"send":"mic"} s=${20}/></button>`}
+    </div>`:html`<div className="p-3 text-center text-sm text-gray-500 bg-white/80" style=${{paddingBottom:"calc(env(safe-area-inset-bottom,0px) + .75rem)"}}>${lockMsg||"Seul le créateur peut publier ici."}</div>`}
+  </div>`;
+}
+
+function EntSheet({title,ph,groupMode,onSave,onClose}){
+  const [f,setF]=useState({name:"",desc:"",photo:null,phones:""}),[err,setErr]=useState(""),[busy,setBusy]=useState(false);
+  const go=async()=>{setBusy(true);setErr("");try{await onSave(f)}catch(e){setErr(e.message||"Erreur");setBusy(false)}};
+  return html`<${Sheet} title=${title} onClose=${onClose}><div className="flex justify-center"><${PhotoPick} v=${f.photo} name=${f.name} onPick=${p=>setF({...f,photo:p})} label="Photo ou logo"/></div><input placeholder=${ph} value=${f.name} onChange=${e=>setF({...f,name:e.target.value})} className=${inp}/><input placeholder="Description (facultatif)" value=${f.desc} onChange=${e=>setF({...f,desc:e.target.value})} className=${inp}/>${groupMode&&html`<textarea placeholder="Numéros des membres inscrits, séparés par des virgules (ex : +22890123456, +22891234567)" value=${f.phones} onChange=${e=>setF({...f,phones:e.target.value})} className=${inp+" min-h-[70px]"}></textarea>`}<${Err} t=${err}/><button disabled=${!f.name.trim()||busy} className=${btn} onClick=${go}>${busy?"Un instant…":"Créer"}</button><//>`;
+}
+function ContactSheet({onFound,onClose}){
+  const [f,setF]=useState({cc:"+228",phone:""}),[err,setErr]=useState(""),[busy,setBusy]=useState(false);
+  const go=async()=>{setBusy(true);setErr("");try{const u=await findByPhone(normPhone(f.cc,f.phone));if(!u){setErr("Ce numéro n’est pas encore inscrit sur Kuba City. Invite ton ami à s’inscrire.");setBusy(false);return}onFound(u)}catch(e){setErr("Erreur : "+(e.code||e.message));setBusy(false)}};
+  return html`<${Sheet} title="Nouveau contact" onClose=${onClose}><p className="text-sm text-gray-500">Entre le numéro d’un membre déjà inscrit.</p><${CCsel} f=${f} set=${setF}/><${Err} t=${err}/><button disabled=${f.phone.replace(/\D/g,"").length<6||busy} className=${btn} onClick=${go}>${busy?"Recherche…":"Rechercher et discuter"}</button><//>`;
+}
+function StatusSheet({onSave,onClose}){
+  const cols=["#0f7a56","#f5b100","#2563eb","#be185d","#374151"];
+  const [f,setF]=useState({text:"",img:null,bg:cols[0]});
+  return html`<${Sheet} title="Ajouter un statut" onClose=${onClose}>
+    <div className="rounded-xl overflow-hidden relative flex items-center justify-center min-h-[160px]" style=${{background:f.bg}}>${f.img&&html`<img src=${f.img} className="absolute inset-0 w-full h-full object-cover"/>`}<textarea placeholder="Écrivez votre actu, votre activité ou business…" value=${f.text} onChange=${e=>setF({...f,text:e.target.value})} className="relative w-full min-h-[160px] bg-transparent text-white placeholder-white/70 text-center text-lg p-4 outline-none resize-none"></textarea></div>
+    <div className="flex items-center gap-2">${cols.map(c=>html`<button key=${c} onClick=${()=>setF({...f,bg:c})} className="w-8 h-8 rounded-full border-2" style=${{background:c,borderColor:f.bg===c?"#000":"transparent"}}></button>`)}<${Pick} max=${800} onPick=${img=>setF({...f,img})} className="ml-auto flex items-center gap-1 text-[#008069] text-sm cursor-pointer"><${Ic} n="camera" s=${20}/> Photo / logo<//></div>
+    <button disabled=${!f.text.trim()&&!f.img} className=${btn} onClick=${()=>onSave(f)}>Publier</button><//>`;
+}
+
+function ProfileSheet({me,users,blocked,onSave,onUnblock,onDelete,onClose}){
+  const [f,setF]=useState({name:me.name,photo:me.photo||null});
+  return html`<${Sheet} title="Mon profil" onClose=${onClose}>
+    <div className="flex justify-center"><${PhotoPick} v=${f.photo} name=${f.name} onPick=${p=>setF({...f,photo:p})} label="Changer la photo"/></div>
+    <input value=${f.name} onChange=${e=>setF({...f,name:e.target.value})} className=${inp}/>
+    <div className="text-sm text-gray-500">${me.phone}</div>
+    <button disabled=${!f.name.trim()} className=${btn} onClick=${()=>onSave(f)}>Enregistrer</button>
+    ${blocked.length>0&&html`<div><div className="text-sm font-semibold text-[#008069] mb-1">Contacts bloqués</div>${blocked.map(id=>html`<div key=${id} className="flex items-center gap-3 py-1"><${Av} src=${(users[id]||{}).photo} name=${(users[id]||{}).name||"?"} s=${36}/><span className="flex-1 truncate">${(users[id]||{}).name||"Membre"}</span><button onClick=${()=>onUnblock(id)} className="text-[#008069] text-sm font-semibold">Débloquer</button></div>`)}</div>`}
+    <button onClick=${onDelete} className="w-full text-red-600 font-semibold py-2">Supprimer mon compte</button><//>`;
+}
+
+function App(){
+  const [uid,setUid]=useState(null),[authErr,setAuthErr]=useState(""),[me,setMe]=useState(undefined),[users,setUsers]=useState({}),[chats,setChats]=useState([]),[kouba,setKouba]=useState({}),[sts,setSts]=useState([]),[comms,setComms]=useState([]),[fail,setFail]=useState(""),[prefs,setPrefs]=useState({blocked:[],hidden:{}}),
+    [tab,setTab]=useState(0),[open,setOpen]=useState(null),[sheet,setSheet]=useState(null),[num,setNum]=useState(""),
+    [calls,setCalls]=useState(()=>{try{return JSON.parse(localStorage.getItem("kc_calls"))||[]}catch(e){return[]}});
+  const onErr=e=>setFail(e.code||e.message);
+  useEffect(()=>{onAuthStateChanged(auth,u=>{if(u)setUid(u.uid);else signInAnonymously(auth).catch(e=>setAuthErr(e.code||e.message))})},[]);
+  useEffect(()=>{if(!uid)return;return onSnapshot(doc(db,"users",uid),s=>setMe(s.exists()?s.data():null),onErr)},[uid]);
+  useEffect(()=>{if(!uid||!me)return;const u=[
+    onSnapshot(doc(db,"users",uid,"private","prefs"),s=>setPrefs({blocked:[],hidden:{},...(s.exists()?s.data():{})}),onErr),
+    onSnapshot(collection(db,"users"),s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());setUsers(m)},onErr),
+    onSnapshot(query(collection(db,"chats"),where("members","array-contains",uid)),s=>setChats(s.docs.map(d=>({id:d.id,...d.data()}))),onErr),
+    onSnapshot(doc(db,"chats","kouba"),s=>setKouba(s.exists()?s.data():{}),onErr),
+    onSnapshot(query(collection(db,"statuses"),where("ts",">",Date.now()-864e5),orderBy("ts","desc")),s=>setSts(s.docs.map(d=>({id:d.id,...d.data()}))),onErr),
+    onSnapshot(collection(db,"comms"),s=>setComms(s.docs.map(d=>({id:d.id,...d.data()}))),onErr)];
+    return()=>u.forEach(f=>f())},[uid,!!me]);
+  useEffect(()=>{try{localStorage.setItem("kc_calls",JSON.stringify(calls.slice(0,50)))}catch(e){}},[calls]);
+
+  if(authErr)return html`<div className="h-full max-w-md mx-auto bg-white p-6 space-y-3"><h1 className="text-xl font-bold text-[#008069]">Connexion impossible</h1><p className="text-sm">Dans la console Firebase, active <b>Authentication → Méthode de connexion → Anonyme</b>, puis recharge.</p><p className="text-xs text-gray-400">${authErr}</p></div>`;
+  if(!uid||me===undefined)return html`<div className="h-full flex flex-col items-center justify-center gap-3"><${Logo}/><p className="text-gray-500 text-sm">Chargement…</p></div>`;
+  if(me===null)return html`<${Welcome} uid=${uid} onDone=${()=>{}}/>`;
+
+  const call=(n,name)=>{setCalls(c=>[{id:Date.now(),num:n,name:name||n,ts:Date.now()},...c]);const a=document.createElement("a");a.href="tel:"+n.replace(/[^\d+]/g,"");a.click()};
+  const dmId=o=>[uid,o].sort().join("_");
+  const mkEnt=c=>{if(c.type==="dm"){const o=c.members.find(x=>x!==uid),u=users[o]||{};return{...c,name:u.name||"Membre",photo:u.photo,phone:u.phone,other:o}}return{...c,sub:c.sub||"Groupe"}};
+  const list=[{id:"kouba",type:"group",name:"Les Amis de Kouba",sub:"Groupe principal du quartier",ts:kouba.ts||0,last:kouba.last,members:[]},...chats.filter(c=>c.id!=="kouba")].map(c=>c.id==="kouba"?c:mkEnt(c)).filter(c=>c.id==="kouba"||!(prefs.hidden[c.id]&&(c.ts||0)<=prefs.hidden[c.id])).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const sendChat=async(ent,m)=>{try{const ref=doc(db,"chats",ent.id),meta={ts:Date.now(),last:m.text||(m.img?"📷 Photo":"🎤 Message vocal")};
+    await setDoc(ref,ent.id==="kouba"?{type:"group",name:ent.name,...meta}:{type:ent.type,members:ent.members,...(ent.type==="group"?{name:ent.name,photo:ent.photo||null}:{}),...meta},{merge:true});
+    await addDoc(collection(ref,"messages"),{from:uid,ts:Date.now(),...m})}catch(e){onErr(e)}};
+  const sendPost=async(c,m)=>{try{await addDoc(collection(db,"comms",c.id,"posts"),{from:uid,ts:Date.now(),...m})}catch(e){onErr(e)}};
+  const titles=["Kuba City","Actus","Communautés","Appels"],tabs=[["chat","Discussions"],["circle","Actus"],["users","Communautés"],["phone","Appels"]];
+  const fab=(ic,fn)=>html`<button onClick=${fn} className="fixed right-4 bg-[#00a884] text-white rounded-2xl p-4 shadow-lg active:bg-[#008069] z-20" style=${{bottom:"calc(env(safe-area-inset-bottom,0px) + 5rem)"}}><${Ic} n=${ic}/></button>`;
+  const curChat=open&&open.k==="chat"&&(list.find(c=>c.id===open.id)||open.ent);
+  const curComm=open&&open.k==="comm"&&comms.find(c=>c.id===open.id);
+  const myCalls=calls;
+  const savePrefs=p=>setDoc(doc(db,"users",uid,"private","prefs"),p,{merge:true}).catch(onErr);
+  const oth=curChat&&curChat.type==="dm"?curChat.members.find(x=>x!==uid):null,isBlk=!!(oth&&prefs.blocked.includes(oth));
+  const delAcc=async()=>{if(!confirm("Supprimer ton compte ? Ton profil et tes statuts seront effacés. Tes anciens messages resteront visibles sous le nom « Membre »."))return;try{const q=await getDocs(query(collection(db,"statuses"),where("uid","==",uid)));await Promise.all(q.docs.map(d=>deleteDoc(d.ref)));await deleteDoc(doc(db,"users",uid,"private","prefs"));await deleteDoc(doc(db,"users",uid));await auth.currentUser.delete()}catch(e){alert("Erreur : "+(e.code||e.message))}location.reload()};
+  return html`<div className="h-full max-w-md mx-auto bg-white flex flex-col relative">
+    <div className="bg-[#008069] text-white px-4 pb-3 pt-3 flex items-center gap-3"><h1 className="text-xl font-bold flex-1">${titles[tab]}</h1><button onClick=${()=>setSheet("profile")}><${Av} src=${me.photo} name=${me.name} s=${32}/></button></div>
+    ${fail&&html`<div className="bg-red-50 text-red-700 text-xs px-4 py-2">Erreur serveur (${fail}). Vérifie que Firestore est créé et que les règles de sécurité sont publiées.</div>`}
+    <div className="flex-1 overflow-y-auto pb-24">
+      ${tab===0&&html`<div>${list.map(c=>html`<${Row} key=${c.id} name=${c.name} photo=${c.photo} sub=${c.last||c.phone||c.sub||""} time=${c.ts?fmtD(c.ts):""} onClick=${()=>setOpen({k:"chat",id:c.id})}/>`)}${list.length<2&&html`<${Empty} t="Touchez le bouton vert pour discuter avec un membre inscrit ou créer un groupe."/>`}</div>`}
+      ${tab===1&&html`<div><button onClick=${()=>setSheet("status")} className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100"><div className="relative"><${Av} src=${me.photo} name=${me.name}/><span className="absolute -bottom-1 -right-1 bg-[#00a884] text-white rounded-full p-0.5 border-2 border-white"><${Ic} n="plus" s=${14}/></span></div><div><div className="font-semibold">Mon statut</div><div className="text-sm text-gray-500">Ajouter un statut</div></div></button>
+        ${sts.filter(s=>!prefs.blocked.includes(s.uid)).map(s=>html`<div key=${s.id} className="mx-4 mb-3"><div className="flex items-center gap-2 mb-1"><${Av} src=${s.photo} name=${s.name} s=${28}/><span className="text-sm font-semibold">${s.uid===uid?"Moi":s.name}</span><span className="text-xs text-gray-400">${fmtD(s.ts)}</span>${s.uid===uid&&html`<button onClick=${()=>deleteDoc(doc(db,"statuses",s.id))} className="ml-auto text-gray-400"><${Ic} n="trash" s=${18}/></button>`}</div><div className="rounded-xl overflow-hidden relative min-h-[120px] flex items-center justify-center text-white text-center" style=${{background:s.bg}}>${s.img&&html`<img src=${s.img} className="absolute inset-0 w-full h-full object-cover"/>`}<div className="relative p-4 font-medium" style=${{textShadow:s.img?"0 1px 4px #0008":"none"}}>${s.text}</div></div></div>`)}
+        ${!sts.length&&html`<${Empty} t="Aucun statut pour le moment. Publie le premier !"/>`}</div>`}
+      ${tab===2&&html`<div><button onClick=${()=>setSheet("comm")} className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100"><div className="rounded-xl bg-[#00a884] text-white p-3"><${Ic} n="users"/></div><span className="font-semibold">Lancer votre communauté</span></button>${comms.map(c=>html`<${Row} key=${c.id} name=${c.name} photo=${c.photo} sub=${c.desc||"Communauté"} onClick=${()=>setOpen({k:"comm",id:c.id})}/>`)}${!comms.length&&html`<${Empty} t="Rassemblez les membres autour d’annonces ou de projets du quartier."/>`}</div>`}
+      ${tab===3&&html`<div className="p-4 space-y-4"><div className="flex gap-2 items-end"><input type="tel" inputMode="tel" placeholder="Composer un numéro (+228…)" value=${num} onChange=${e=>setNum(e.target.value.replace(/[^\d+ ]/g,""))} className=${inp}/><button disabled=${num.replace(/\D/g,"").length<6} onClick=${()=>{call(num);setNum("")}} className="bg-[#00a884] disabled:opacity-40 text-white rounded-full p-3"><${Ic} n="phone"/></button></div>
+        <div><div className="text-sm font-semibold text-[#008069] mb-1">Membres</div>${Object.entries(users).filter(([id])=>id!==uid).map(([id,u])=>html`<div key=${id} className="flex items-center gap-3 py-2"><${Av} src=${u.photo} name=${u.name} s=${40}/><div className="flex-1 min-w-0"><div className="font-medium truncate">${u.name}</div><div className="text-xs text-gray-500">${u.phone}</div></div><button onClick=${()=>call(u.phone,u.name)} className="text-[#00a884] p-2"><${Ic} n="phone"/></button></div>`)}${Object.keys(users).length<2&&html`<${Empty} t="Aucun autre membre inscrit pour le moment."/>`}</div>
+        <div><div className="text-sm font-semibold text-[#008069] mb-1">Récents</div>${myCalls.map(c=>html`<button key=${c.id} onClick=${()=>call(c.num,c.name)} className="w-full flex items-center gap-3 py-2 text-left"><div className="bg-[#d9fdd3] text-[#008069] rounded-full p-2"><${Ic} n="phone" s=${18}/></div><div className="flex-1 min-w-0"><div className="font-medium truncate">${c.name}</div><div className="text-xs text-gray-500">Appel sortant · ${fmtD(c.ts)}</div></div></button>`)}${!myCalls.length&&html`<${Empty} t="Aucun appel pour le moment."/>`}</div></div>`}
+    </div>
+    ${tab===0&&fab("chat",()=>setSheet("menu"))}${tab===1&&fab("camera",()=>setSheet("status"))}${tab===2&&fab("plus",()=>setSheet("comm"))}
+    <nav className="absolute bottom-0 inset-x-0 bg-white border-t flex" style=${{paddingBottom:"env(safe-area-inset-bottom,0px)"}}>${tabs.map(([ic,l],i)=>html`<button key=${l} onClick=${()=>setTab(i)} className=${"flex-1 py-2 flex flex-col items-center text-[11px] "+(tab===i?"text-[#008069] font-semibold":"text-gray-500")}><span className=${"px-5 py-1 rounded-full "+(tab===i?"bg-[#d9fdd3]":"")}><${Ic} n=${ic} s=${22}/></span>${l}</button>`)}</nav>
+    ${sheet==="menu"&&html`<${Sheet} title="Nouvelle discussion" onClose=${()=>setSheet(null)}><button onClick=${()=>setSheet("contact")} className="w-full flex items-center gap-3 py-2"><span className="bg-[#00a884] text-white rounded-full p-3"><${Ic} n="userplus"/></span><span className="font-medium">Nouveau contact</span></button><button onClick=${()=>setSheet("group")} className="w-full flex items-center gap-3 py-2"><span className="bg-[#00a884] text-white rounded-full p-3"><${Ic} n="users"/></span><span className="font-medium">Nouveau groupe</span></button><//>`}
+    ${sheet==="contact"&&html`<${ContactSheet} onClose=${()=>setSheet(null)} onFound=${u=>{if(u.id===uid){setSheet(null);return}const id=dmId(u.id);setSheet(null);setOpen({k:"chat",id,ent:{id,type:"dm",members:[uid,u.id],name:u.name,photo:u.photo,phone:u.phone}})}}/>`}
+    ${sheet==="group"&&html`<${EntSheet} title="Nouveau groupe" ph="Nom du groupe" groupMode=${true} onClose=${()=>setSheet(null)} onSave=${async f=>{const mem=[uid];for(const p of f.phones.split(/[,;\n]+/).map(x=>x.replace(/[^\d+]/g,"")).filter(Boolean)){const u=await findByPhone(p.startsWith("+")?p:"+"+p);if(!u)throw new Error("Numéro non inscrit : "+p);if(!mem.includes(u.id))mem.push(u.id)}
+      const id="g"+Date.now(),ent={id,type:"group",name:f.name.trim(),sub:f.desc.trim()||"Groupe",photo:f.photo,members:mem};await setDoc(doc(db,"chats",id),{type:"group",name:ent.name,sub:ent.sub,photo:ent.photo||null,members:mem,ts:Date.now(),last:""});setSheet(null);setOpen({k:"chat",id,ent})}}/>`}
+    ${sheet==="comm"&&html`<${EntSheet} title="Lancer votre communauté" ph="Nom de la communauté" onClose=${()=>setSheet(null)} onSave=${async f=>{const ref=await addDoc(collection(db,"comms"),{name:f.name.trim(),desc:f.desc.trim(),photo:f.photo||null,owner:uid,ts:Date.now()});setSheet(null);setOpen({k:"comm",id:ref.id})}}/>`}
+    ${sheet==="chatmenu"&&curChat&&html`<${Sheet} title=${curChat.name} onClose=${()=>setSheet(null)}>
+      ${oth&&html`<button onClick=${()=>{savePrefs({blocked:isBlk?prefs.blocked.filter(x=>x!==oth):[...new Set([...prefs.blocked,oth])]});setSheet(null)}} className="w-full text-left py-2 font-medium">${isBlk?"Débloquer ce contact":"Bloquer ce contact"}</button>`}
+      <button onClick=${()=>{if(!confirm("Supprimer cette discussion de ton téléphone ? Elle réapparaîtra si on t’écrit."))return;savePrefs({hidden:{[curChat.id]:Date.now()}});setSheet(null);setOpen(null)}} className="w-full text-left py-2 font-medium text-red-600">Supprimer la discussion</button><//>`}
+    ${sheet==="profile"&&html`<${ProfileSheet} me=${me} users=${users} blocked=${prefs.blocked} onClose=${()=>setSheet(null)} onSave=${async f=>{try{await setDoc(doc(db,"users",uid),{name:f.name.trim(),photo:f.photo||null},{merge:true})}catch(e){onErr(e)}setSheet(null)}} onUnblock=${id=>savePrefs({blocked:prefs.blocked.filter(x=>x!==id)})} onDelete=${delAcc}/>`}
+    ${sheet==="status"&&html`<${StatusSheet} onClose=${()=>setSheet(null)} onSave=${async f=>{try{await addDoc(collection(db,"statuses"),{uid,name:me.name,photo:me.photo||null,text:f.text.trim(),img:f.img||null,bg:f.bg,ts:Date.now()})}catch(e){onErr(e)}setSheet(null)}}/>`}
+    ${curChat&&html`<${Chat} key=${curChat.id} ent=${curChat} path=${["chats",curChat.id,"messages"]} uid=${uid} users=${users} blocked=${prefs.blocked} canPost=${!isBlk} lockMsg="Vous avez bloqué ce contact. Débloquez-le pour écrire." onMenu=${curChat.id==="kouba"?null:()=>setSheet("chatmenu")} onErr=${onErr} call=${call} onBack=${()=>setOpen(null)} onSend=${m=>sendChat(curChat,m)}/>`}
+    ${curComm&&html`<${Chat} key=${curComm.id} ent=${{...curComm,type:"comm",sub:curComm.desc||"Communauté"}} path=${["comms",curComm.id,"posts"]} uid=${uid} users=${users} canPost=${curComm.owner===uid} onErr=${onErr} call=${call} onBack=${()=>setOpen(null)} onSend=${m=>sendPost(curComm,m)}/>`}
+  </div>`;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(html`<${App}/>`);
+</script>
+</body>
+</html>
